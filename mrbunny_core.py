@@ -3,8 +3,8 @@ import requests
 import json
 from PIL import Image
 import io
-from duckduckgo_search import ddg  # from duckduckgo-search package
-from bs4 import BeautifulSoup  # correct class name
+from duckduckgo_search import ddg
+from bs4 import BeautifulSoup
 
 # ---------- uncertainty detection ----------
 UNCERTAIN_PHRASES = [
@@ -36,7 +36,11 @@ def search_web_duckduckgo(query: str, max_results: int = 3) -> str:
     return "\n".join(summary_lines)
 
 # ---------- AI/chat response ----------
-def get_ai_response(prompt: str, api_key: str) -> str:
+def get_ai_response_v2(prompt: str, api_key: str) -> str:
+    """
+    Sends the prompt to OpenRouter AI and returns the response.
+    Falls back to DuckDuckGo search if AI response is empty, malformed, or uncertain.
+    """
     global ai_conversation
 
     ai_conversation.append({"role": "user", "content": prompt})
@@ -57,7 +61,7 @@ def get_ai_response(prompt: str, api_key: str) -> str:
     }
 
     data = {
-        "model": "deepseek/deepseek-r1-0528:free",  # verify this model string with OpenRouter docs
+        "model": "deepseek/deepseek-r1-0528:free",  # check with your OpenRouter docs
         "messages": [{"role": "system", "content": system_prompt}] + ai_conversation
     }
 
@@ -68,31 +72,42 @@ def get_ai_response(prompt: str, api_key: str) -> str:
             json=data,
             timeout=15
         )
+        response.raise_for_status()
         result = response.json()
 
-        if response.status_code == 200 and "choices" in result:
-            reply = result["choices"][0]["message"]["content"].strip()
+        # Robustly extract AI reply
+        reply = ""
+        try:
+            reply = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        except Exception:
+            reply = ""
 
-            # If the reply seems uncertain, fallback to web search
-            if is_uncertain(reply):
-                search_info = search_web_duckduckgo(prompt)
-                fallback_msg = (
-                    "🔍 I wasn't sure about the answer, so I searched it for you:\n\n"
-                    f"{search_info}"
-                )
-                ai_conversation.append({"role": "assistant", "content": fallback_msg})
-                return fallback_msg
-
-            ai_conversation.append({"role": "assistant", "content": reply})
-            return reply
-        else:
-            # fallback search if model call failed
+        if not reply or is_uncertain(reply):
+            # fallback to web search if AI reply is empty or uncertain
             search_info = search_web_duckduckgo(prompt)
-            return f"⚠️ Unexpected response from AI. I searched anyway:\n\n{search_info}"
-    except Exception as e:
-        # network or other error -> fallback
+            fallback_msg = (
+                "🔍 I wasn't confident about the answer, so I searched it for you:\n\n"
+                f"{search_info}"
+            )
+            ai_conversation.append({"role": "assistant", "content": fallback_msg})
+            return fallback_msg
+
+        # Save valid reply to conversation history
+        ai_conversation.append({"role": "assistant", "content": reply})
+        return reply
+
+    except requests.exceptions.RequestException as e:
+        # network or HTTP error -> fallback
         search_info = search_web_duckduckgo(prompt)
-        return f"❌ Error calling AI: {e}\n\nFallback search:\n{search_info}"
+        return f"❌ Network error: {e}\n\nFallback search:\n{search_info}"
+    except json.JSONDecodeError:
+        # malformed JSON -> fallback
+        search_info = search_web_duckduckgo(prompt)
+        return f"❌ Malformed AI response\n\nFallback search:\n{search_info}"
+    except Exception as e:
+        # unexpected error -> fallback
+        search_info = search_web_duckduckgo(prompt)
+        return f"❌ Unexpected error: {e}\n\nFallback search:\n{search_info}"
 
 # ---------- OCR helper ----------
 def extract_text_from_image(image: Image.Image, ocr_api_key: str) -> str:
