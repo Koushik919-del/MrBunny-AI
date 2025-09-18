@@ -6,34 +6,8 @@ import io
 from duckduckgo_search import ddg  # from duckduckgo-search package
 from bs4 import BeautifulSoup  # correct class name
 
-# ---------- uncertainty detection ----------
-UNCERTAIN_PHRASES = [
-    "no evidence", "not confirmed", "no official announcement",
-    "i couldn't find", "not available", "uncertain", "speculative",
-    "does not exist", "not verified", "unconfirmed", "unknown",
-    "nothing has been announced", "as of now"
-]
-
-def is_uncertain(response: str) -> bool:
-    response_lower = response.lower()
-    return any(phrase in response_lower for phrase in UNCERTAIN_PHRASES)
-
 # ---------- conversation history ----------
 ai_conversation = []
-
-# ---------- fallback web search ----------
-def search_web_duckduckgo(query: str, max_results: int = 3) -> str:
-    results = ddg(query, max_results=max_results)
-    if not results:
-        return "No useful search results found."
-
-    summary_lines = []
-    for i, item in enumerate(results, start=1):
-        title = item.get("title") or "No title"
-        snippet = item.get("body") or ""
-        url = item.get("href") or item.get("link") or ""
-        summary_lines.append(f"{i}. {title}\n{snippet}\n{url}\n")
-    return "\n".join(summary_lines)
 
 # ---------- AI/chat response ----------
 def get_ai_response(prompt: str, api_key: str) -> str:
@@ -70,24 +44,14 @@ def get_ai_response(prompt: str, api_key: str) -> str:
         )
         result = response.json()
 
-        # ======= NEW SAFE EXTRACTION SECTION =======
-        reply = (result.get("choices", [{}])[0].get("message", {}).get("content", "") or "").strip()
-
-        # Fallback if empty or uncertain
-        if not reply or is_uncertain(reply):
-            search_info = search_web_duckduckgo(prompt)
-            fallback_msg = f"🔍 I wasn't sure about the answer, so I searched for you:\n\n{search_info}"
-            ai_conversation.append({"role": "assistant", "content": fallback_msg})
-            return fallback_msg
-
-        ai_conversation.append({"role": "assistant", "content": reply})
-        return reply
-        # ============================================
-
+        if response.status_code == 200 and "choices" in result:
+            reply = result["choices"][0]["message"]["content"].strip()
+            ai_conversation.append({"role": "assistant", "content": reply})
+            return reply
+        else:
+            return "⚠️ Unexpected response from AI. Please try again."
     except Exception as e:
-        # network or other error -> fallback
-        search_info = search_web_duckduckgo(prompt)
-        return f"❌ Error calling AI: {e}\n\nFallback search:\n{search_info}"
+        return f"❌ Error calling AI: {e}"
 
 # ---------- OCR helper ----------
 def extract_text_from_image(image: Image.Image, ocr_api_key: str) -> str:
