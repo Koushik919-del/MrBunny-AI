@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
-from secrets import OPENROUTER_API_KEY
+from mrbunny_secrets import OPENROUTER_API_KEY
+
 
 # -----------------------------
 # PAGE CONFIG
