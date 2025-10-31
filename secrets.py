@@ -1,0 +1,2 @@
+# secrets.py
+OPENROUTER_API_KEY = "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"
