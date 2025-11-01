@@ -76,7 +76,7 @@ if "current_chat" not in st.session_state:
 # -----------------------------
 # SIDEBAR: Chat Management
 # -----------------------------
- st.sidebar:
+with st.sidebar:
     st.title("💬 Conversations")
 
     # Form to create a new conversation
