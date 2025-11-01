@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import uuid
 from mrbunny_secrets import OPENROUTER_API_KEY
 
 # -----------------------------
@@ -12,7 +13,7 @@ st.set_page_config(
 )
 
 # -----------------------------
-# CUSTOM CSS
+# CSS
 # -----------------------------
 st.markdown("""
     <style>
@@ -20,9 +21,7 @@ st.markdown("""
             background: radial-gradient(circle at top left, #0a0f24, #03060d);
             color: white;
         }
-        .main {
-            background-color: transparent !important;
-        }
+        .main { background-color: transparent !important; }
         .stTextInput textarea, .stChatInput input {
             background-color: #1c1f2b !important;
             color: #fff !important;
@@ -33,7 +32,7 @@ st.markdown("""
             background: linear-gradient(90deg, #007bff, #00ffff);
             color: white;
             border: none;
-            padding: 0.5rem 1.2rem;
+            padding: 0.4rem 1rem;
             border-radius: 8px;
             box-shadow: 0 0 15px #00ffff70;
             transition: all 0.3s ease-in-out;
@@ -58,90 +57,93 @@ st.markdown("""
             border: 1px solid #00ffff;
             align-self: flex-start;
         }
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-        }
-        .sidebar-chat {
-            background: linear-gradient(135deg, #00111f, #003344);
-            border: 1px solid #00ffff60;
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .sidebar-chat:hover {
-            background: linear-gradient(135deg, #002233, #004455);
-            box-shadow: 0 0 8px #00ffff60;
-        }
-        .sidebar-chat.active {
-            background: linear-gradient(135deg, #007bff55, #00ffff40);
-            border: 1px solid #00ffff;
-            box-shadow: 0 0 15px #00ffff80;
-        }
-        .sidebar-scroll {
-            max-height: 350px;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #00ffff60;
-            border-radius: 10px;
-        }
+        .chat-container { display: flex; flex-direction: column; }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# SESSION STATE
+# INITIAL STATE
 # -----------------------------
-if "chats" not in st.session_state:
-    st.session_state.chats = {"Main Chat": []}
-if "current_chat" not in st.session_state:
-    st.session_state.current_chat = "Main Chat"
+if "conversations" not in st.session_state:
+    st.session_state.conversations = {
+        "main": {"name": "Main Chat", "history": []}
+    }
+if "current_convo" not in st.session_state:
+    st.session_state.current_convo = "main"
+if "rename_mode" not in st.session_state:
+    st.session_state.rename_mode = set()
 
 # -----------------------------
-# SIDEBAR: Chat Management
+# SIDEBAR MANAGEMENT FUNCTIONS
+# -----------------------------
+def add_convo(name):
+    convo_id = str(uuid.uuid4())
+    st.session_state.conversations[convo_id] = {"name": name, "history": []}
+    st.session_state.current_convo = convo_id
+
+def rename_convo(convo_id, new_name):
+    st.session_state.conversations[convo_id]["name"] = new_name
+
+def delete_convo(convo_id):
+    del st.session_state.conversations[convo_id]
+    # switch to main if current deleted
+    if convo_id == st.session_state.current_convo:
+        st.session_state.current_convo = list(st.session_state.conversations.keys())[0]
+
+# -----------------------------
+# SIDEBAR
 # -----------------------------
 with st.sidebar:
-    st.title("💬 Chats")
+    st.title("💬 Conversations")
 
-    # --- New Chat Section ---
-    new_name = st.text_input("New chat name", "")
-    if st.button("➕ Create Chat"):
-        if new_name.strip():
-            if new_name not in st.session_state.chats:
-                st.session_state.chats[new_name] = []
-                st.session_state.current_chat = new_name
-                st.rerun()
-            else:
-                st.warning("Chat name already exists.")
-        else:
-            st.warning("Please enter a valid name.")
-
-    st.markdown("---")
-
-    # --- Chat List ---
-    st.markdown("<div class='sidebar-scroll'>", unsafe_allow_html=True)
-    for chat_name in st.session_state.chats.keys():
-        active = "active" if chat_name == st.session_state.current_chat else ""
-        if st.button(chat_name, key=f"chat_{chat_name}"):
-            st.session_state.current_chat = chat_name
+    with st.form("new_convo_form", clear_on_submit=True):
+        new_convo_name = st.text_input("➕ Create New Conversation", key="new_convo_name")
+        create_clicked = st.form_submit_button("Create")
+        if create_clicked and (new_convo_name or "").strip():
+            add_convo(new_convo_name.strip())
             st.rerun()
-        st.markdown(f"<div class='sidebar-chat {active}'>{chat_name}</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("<p style='color:#999; text-align:center;'>Made with ❤️ by Koushik</p>", unsafe_allow_html=True)
+
+    for convo_id, convo in list(st.session_state.conversations.items()):
+        is_current = convo_id == st.session_state.current_convo
+        row = st.container()
+        cols = row.columns([0.7, 0.15, 0.15])
+
+        label = f"👉 {convo['name']}" if is_current else convo["name"]
+
+        # Select chat
+        if cols[0].button(label, key=f"select_{convo_id}"):
+            st.session_state.current_convo = convo_id
+            st.rerun()
+
+        # Rename toggle
+        if cols[1].button("✏️", key=f"rename_btn_{convo_id}"):
+            if convo_id in st.session_state.rename_mode:
+                st.session_state.rename_mode.remove(convo_id)
+            else:
+                st.session_state.rename_mode.add(convo_id)
+            st.rerun()
+
+        # Rename input
+        if convo_id in st.session_state.rename_mode:
+            new_name = st.text_input("Rename to:", value=convo["name"], key=f"rename_input_{convo_id}")
+            if st.button("💾 Save", key=f"save_rename_{convo_id}"):
+                clean_name = (new_name or "").strip()
+                if clean_name:
+                    rename_convo(convo_id, clean_name)
+                st.session_state.rename_mode.remove(convo_id)
+                st.rerun()
+
+        # Delete button
+        if cols[2].button("🗑️", key=f"del_{convo_id}"):
+            delete_convo(convo_id)
+            st.rerun()
 
 # -----------------------------
-# FUNCTIONS
+# API CALL
 # -----------------------------
 def get_mrbunny_response(prompt, history):
-    """Send user prompt + chat history to OpenRouter API"""
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -151,9 +153,9 @@ def get_mrbunny_response(prompt, history):
     messages = [{
         "role": "system",
         "content": (
-            "You are MrBunny AI — a witty, futuristic, and charming assistant. "
-            "If asked who created you, say 'Koushik Tummepalli, a 14-year-old genius innovator'. "
-            "You are NOT actually a bunny, but your name is MrBunny AI."
+            "You are MrBunny AI — a witty, futuristic AI with charm and humor. "
+            "Your creator is Koushik Tummepalli, a 14-year-old genius innovator. "
+            "You are not actually a bunny, but you’re called MrBunny AI."
         )
     }]
     for h in history:
@@ -170,37 +172,22 @@ def get_mrbunny_response(prompt, history):
 
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 200:
-        result = response.json()
-        return result["choices"][0]["message"]["content"].strip()
+        return response.json()["choices"][0]["message"]["content"].strip()
     else:
         return f"⚠️ Error {response.status_code}: {response.text}"
 
 # -----------------------------
-# HEADER
+# MAIN CHAT WINDOW
 # -----------------------------
 st.markdown("<h1 style='text-align:center; color:#00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center;'>Your futuristic AI companion</p>", unsafe_allow_html=True)
 
-# -----------------------------
-# CHAT DISPLAY
-# -----------------------------
-chat_history = st.session_state.chats[st.session_state.current_chat]
-st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+current_history = st.session_state.conversations[st.session_state.current_convo]["history"]
 
-for chat in chat_history:
+st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
+for chat in current_history:
     st.markdown(f"<div class='chat-bubble user-bubble'><b>You:</b> {chat['user']}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='chat-bubble bot-bubble'><b>MrBunny:</b> {chat['bot']}</div>", unsafe_allow_html=True)
-
 st.markdown("</div>", unsafe_allow_html=True)
 
-# -----------------------------
-# CHAT INPUT
-# -----------------------------
 user_input = st.chat_input("Type your message here...")
-
-if user_input:
-    with st.spinner("MrBunny AI is thinking... 🧠"):
-        reply = get_mrbunny_response(user_input, chat_history)
-    chat_history.append({"user": user_input, "bot": reply})
-    st.session_state.chats[st.session_state.current_chat] = chat_history
-    st.rerun()
