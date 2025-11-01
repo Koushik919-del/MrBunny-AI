@@ -92,51 +92,16 @@ with st.sidebar:
                 st.warning("Chat name already exists.")
         else:
             st.warning("Please enter a valid name.")
-    # -----------------------------
-# SIDEBAR: Chat Management (Futuristic Buttons)
-# -----------------------------
-with st.sidebar:
-    st.title("💬 Chats")
     
-    # New chat input
-    new_name = st.text_input("New chat name", "")
-    if st.button("➕ New Chat"):
-        if new_name.strip() != "":
-            if new_name not in st.session_state.chats:
-                st.session_state.chats[new_name] = []
-                st.session_state.current_chat = new_name
-                st.success(f"Created chat '{new_name}'")
-                st.rerun()
-            else:
-                st.warning("Chat name already exists.")
-        else:
-            st.warning("Please enter a valid name.")
-
-    st.markdown("<hr style='border:1px solid #00ffff40;'>", unsafe_allow_html=True)
-    
-    # Custom buttons for each chat
-    for chat_name in st.session_state.chats.keys():
-        if chat_name == st.session_state.current_chat:
-            style = """
-                background: linear-gradient(90deg, #007bff, #00ffff);
-                color: white;
-                border-radius: 8px;
-                padding: 8px;
-                margin-bottom: 5px;
-            """
-        else:
-            style = """
-                background: #1c1f2b;
-                color: #00ffff;
-                border: 1px solid #00ffff30;
-                border-radius: 8px;
-                padding: 8px;
-                margin-bottom: 5px;
-            """
-        if st.button(chat_name, key=chat_name):
-            st.session_state.current_chat = chat_name
-            st.rerun()
-        st.markdown(f"<div style='{style}'></div>", unsafe_allow_html=True)
+    # Chat selector
+    selected = st.radio(
+        "Select Chat",
+        list(st.session_state.chats.keys()),
+        index=list(st.session_state.chats.keys()).index(st.session_state.current_chat)
+    )
+    if selected != st.session_state.current_chat:
+        st.session_state.current_chat = selected
+        st.rerun()
 
 # -----------------------------
 # FUNCTIONS
