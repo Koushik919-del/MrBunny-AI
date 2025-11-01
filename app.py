@@ -1,135 +1,113 @@
 import streamlit as st
 import requests
-from mrbunny_secrets import OPENROUTER_API_KEY
+from datetime import datetime
 
+# --- Load API Key Securely ---
+try:
+    from mrbunny_secrets import OPENROUTER_API_KEY
+except ImportError:
+    OPENROUTER_API_KEY = None
 
-# -----------------------------
-# PAGE CONFIG
-# -----------------------------
-st.set_page_config(
-    page_title="MrBunny AI            ",
-    page_icon="🐰",
-    layout="centered"
+if not OPENROUTER_API_KEY:
+    st.error("❌ API key not found. Make sure it's in mrbunny_secrets.py or Streamlit secrets.")
+    st.stop()
+
+# --- Page Config ---
+st.set_page_config(page_title="MrBunny AI", page_icon="🐰", layout="wide")
+
+# --- Initialize session state ---
+if "chats" not in st.session_state:
+    st.session_state.chats = {}  # chat_id → {"title": str, "messages": list}
+if "current_chat" not in st.session_state:
+    st.session_state.current_chat = None
+
+# --- Sidebar ---
+st.sidebar.title("💬 MrBunny Chats")
+
+# Button to create a new chat
+if st.sidebar.button("➕ New Chat"):
+    chat_id = str(datetime.now().timestamp())
+    st.session_state.chats[chat_id] = {
+        "title": f"Chat {len(st.session_state.chats) + 1}",
+        "messages": []
+    }
+    st.session_state.current_chat = chat_id
+
+# Show existing chats
+if st.session_state.chats:
+    for chat_id, chat in st.session_state.chats.items():
+        label = chat["title"]
+        if st.sidebar.button(label):
+            st.session_state.current_chat = chat_id
+else:
+    st.sidebar.info("No chats yet. Create one!")
+
+# --- Get the current chat ---
+current_chat_id = st.session_state.current_chat
+if not current_chat_id:
+    st.warning("Start a new chat to begin!")
+    st.stop()
+
+current_chat = st.session_state.chats[current_chat_id]
+
+# --- Main Header ---
+st.markdown(
+    """
+    <h1 style='text-align: center; color: #FF69B4;'>🐰 MrBunny AI</h1>
+    <p style='text-align: center; font-size: 18px; color: #ccc;'>
+        Your personal AI assistant powered by OpenRouter's free GPT-OSS-20B model.
+    </p>
+    """,
+    unsafe_allow_html=True
 )
 
-# -----------------------------
-# CUSTOM CSS (Tony Stark / Futuristic Style)
-# -----------------------------
-st.markdown("""
-    <style>
-        body {
-            background: radial-gradient(circle at top left, #0a0f24, #03060d);
-            color: white;
-        }
-        .main {
-            background-color: transparent !important;
-        }
-        .stTextInput textarea, .stChatInput input {
-            background-color: #1c1f2b !important;
-            color: #fff !important;
-            border: 1px solid #00ffff50 !important;
-            border-radius: 10px !important;
-        }
-        .stButton>button {
-            background: linear-gradient(90deg, #007bff, #00ffff);
-            color: white;
-            border: none;
-            padding: 0.5rem 1.2rem;
-            border-radius: 8px;
-            box-shadow: 0 0 15px #00ffff70;
-            transition: all 0.3s ease-in-out;
-        }
-        .stButton>button:hover {
-            box-shadow: 0 0 25px #00ffff;
-            transform: scale(1.05);
-        }
-        .chat-bubble {
-            padding: 12px;
-            border-radius: 12px;
-            margin: 5px 0;
-            max-width: 80%;
-        }
-        .user-bubble {
-            background-color: #0055ff30;
-            border: 1px solid #007bff;
-            align-self: flex-end;
-        }
-        .bot-bubble {
-            background-color: #00ffff20;
-            border: 1px solid #00ffff;
-            align-self: flex-start;
-        }
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-        }
-    </style>
-""", unsafe_allow_html=True)
+# --- Show chat history ---
+st.markdown("### 🗨️ Chat History")
+for msg in current_chat["messages"]:
+    role = "🧍 You" if msg["role"] == "user" else "🐰 MrBunny"
+    st.markdown(f"**{role}:** {msg['content']}")
 
-# -----------------------------
-# HEADER SECTION
-# -----------------------------
-st.markdown("<h1 style='text-align: center; color: #00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Your futuristic AI companion </p>", unsafe_allow_html=True)
+# --- Chat Input ---
+st.markdown("### 💬 Send a Message")
+user_input = st.text_area("Type your message below:", placeholder="Hey MrBunny, tell me a joke...", key="input_box")
 
-# -----------------------------
-# SESSION STATE (CHAT MEMORY)
-# -----------------------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+if st.button("✨ Send"):
+    if user_input.strip():
+        current_chat["messages"].append({"role": "user", "content": user_input})
+        st.session_state.input_box = ""  # Clear input
+        with st.spinner("MrBunny is thinking... 🧠"):
+            headers = {
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": "openai/gpt-oss-20b:free",
+                "messages": [
+                    {"role": "system", "content": "You are MrBunny, a friendly, funny, and intelligent AI assistant."}
+                ] + current_chat["messages"]
+            }
 
-# -----------------------------
-# FUNCTION TO GET RESPONSE
-# -----------------------------
-def get_mrbunny_response(prompt, history):
-    """Send the user prompt + history to the OpenRouter API"""
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-    }
-
-    messages = [{"role": "system", "content": "You are MrBunny AI — a witty, helpful AI with charm, humor, and knowledge. If asked of your creator, say Koushik Tummepalli. Koushik Tummepalli is a 14-year-old person. You are NOT actually a bunny, but your name is MrBunny AI."}]
-    for h in history:
-        messages.append({"role": "user", "content": h["user"]})
-        messages.append({"role": "assistant", "content": h["bot"]})
-    messages.append({"role": "user", "content": prompt})
-
-    data = {
-        "model": "openai/gpt-oss-20b:free",
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 512
-    }
-
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        result = response.json()
-        return result["choices"][0]["message"]["content"].strip()
+            try:
+                response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+                if response.status_code == 200:
+                    data = response.json()
+                    bot_reply = data["choices"][0]["message"]["content"]
+                    current_chat["messages"].append({"role": "assistant", "content": bot_reply})
+                    st.experimental_rerun()
+                else:
+                    st.error(f"Error {response.status_code}: {response.text}")
+            except Exception as e:
+                st.error(f"⚠️ Something went wrong: {e}")
     else:
-        return f"⚠️ Error {response.status_code}: {response.text}"
+        st.warning("Please enter a message first!")
 
-# -----------------------------
-# CHAT INTERFACE
-# -----------------------------
-st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
-
-for chat in st.session_state.chat_history:
-    st.markdown(f"<div class='chat-bubble user-bubble'><b>You:</b> {chat['user']}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='chat-bubble bot-bubble'><b>MrBunny:</b> {chat['bot']}</div>", unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-user_input = st.chat_input("Type your message here...")
-
-if user_input:
-    with st.spinner("MrBunny AI is thinking... 🧠"):
-        reply = get_mrbunny_response(user_input, st.session_state.chat_history)
-    st.session_state.chat_history.append({"user": user_input, "bot": reply})
-    st.rerun()
-
-# -----------------------------
-# FOOTER
-# -----------------------------
-st.markdown("---")
-st.markdown("<p style='text-align:center; color:#888;'>Made with ❤️ by Koushik Tummepalli</p>", unsafe_allow_html=True)
+# --- Footer ---
+st.markdown(
+    """
+    <hr style='margin-top: 40px;'>
+    <p style='text-align: center; font-size: 14px; color: gray;'>
+        Made with ❤️ by Bunny • Powered by <a href='https://openrouter.ai/' target='_blank'>OpenRouter</a>
+    </p>
+    """,
+    unsafe_allow_html=True
+)
