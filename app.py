@@ -123,7 +123,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
-    with st.spinner("MrBunny is thinking... 🧠"):
+    with st.spinner("MrBunny AI is thinking... 🧠"):
         reply = get_mrbunny_response(user_input, st.session_state.chat_history)
     st.session_state.chat_history.append({"user": user_input, "bot": reply})
     st.rerun()
@@ -132,4 +132,4 @@ if user_input:
 # FOOTER
 # -----------------------------
 st.markdown("---")
-st.markdown("<p style='text-align:center; color:#888;'>Made with ❤️ by Koushik (aka Bunny)</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#888;'>Made with ❤️ by Koushik Tummepalli</p>", unsafe_allow_html=True)
