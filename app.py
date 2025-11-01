@@ -76,32 +76,53 @@ if "current_chat" not in st.session_state:
 # -----------------------------
 # SIDEBAR: Chat Management
 # -----------------------------
-with st.sidebar:
-    st.title("💬 Chats")
-    
-    # Create new chat
-    new_name = st.text_input("New chat name", "")
-    if st.button("➕ New Chat"):
-        if new_name.strip() != "":
-            if new_name not in st.session_state.chats:
-                st.session_state.chats[new_name] = []
-                st.session_state.current_chat = new_name
-                st.success(f"Created chat '{new_name}'")
-                st.rerun()
+ st.sidebar:
+    st.title("💬 Conversations")
+
+    # Form to create a new conversation
+    with st.form("new_convo_form", clear_on_submit=True):
+        new_convo_name = st.text_input("➕ Create New Conversation", key="new_convo_name")
+        create_clicked = st.form_submit_button("Create")
+        if create_clicked and (new_convo_name or "").strip():
+            add_convo(new_convo_name.strip())
+            st.rerun()
+
+    # Manage existing conversations
+    for convo_id, convo in list(st.session_state.conversations.items()):
+        is_current = convo_id == st.session_state.current_convo
+        row = st.container()
+        cols = row.columns([0.75, 0.15, 0.1])
+
+        # Label for conversation, highlight if current
+        label = f"👉 {convo['name']}" if is_current else convo["name"]
+
+        # Select conversation
+        if cols[0].button(label, key=f"select_{convo_id}"):
+            st.session_state.current_convo = convo_id
+            st.rerun()
+
+        # Rename button toggles rename mode
+        if cols[1].button("✏️", key=f"rename_btn_{convo_id}"):
+            if convo_id in st.session_state.rename_mode:
+                st.session_state.rename_mode.remove(convo_id)
             else:
-                st.warning("Chat name already exists.")
-        else:
-            st.warning("Please enter a valid name.")
-    
-    # Chat selector
-    selected = st.radio(
-        "Select Chat",
-        list(st.session_state.chats.keys()),
-        index=list(st.session_state.chats.keys()).index(st.session_state.current_chat)
-    )
-    if selected != st.session_state.current_chat:
-        st.session_state.current_chat = selected
-        st.rerun()
+                st.session_state.rename_mode.add(convo_id)
+            st.rerun()
+
+        # If in rename mode, show input and save
+        if convo_id in st.session_state.rename_mode:
+            new_name = st.text_input("Rename to:", value=convo["name"], key=f"rename_input_{convo_id}")
+            if st.button("💾 Save", key=f"save_rename_{convo_id}"):
+                clean_name = (new_name or "").strip()
+                if clean_name:
+                    rename_convo(convo_id, clean_name)
+                st.session_state.rename_mode.remove(convo_id)
+                st.rerun()
+
+        # Delete conversation
+        if cols[2].button("🗑️", key=f"del_{convo_id}"):
+            delete_convo(convo_id)
+            st.rerun()
 
 # -----------------------------
 # FUNCTIONS
