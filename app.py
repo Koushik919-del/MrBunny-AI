@@ -3,6 +3,22 @@ import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
 # -----------------------------
+# SESSION STATE
+# -----------------------------
+if "chats" not in st.session_state:
+    st.session_state.chats = {"Main Chat": []}
+if "current_chat" not in st.session_state:
+    st.session_state.current_chat = "Main Chat"
+
+# For the new sidebar conversations code
+if "conversations" not in st.session_state:
+    st.session_state.conversations = {}  # Or {"Main": {"name": "Main Chat", "messages": []}}
+if "current_convo" not in st.session_state:
+    st.session_state.current_convo = None
+if "rename_mode" not in st.session_state:
+    st.session_state.rename_mode = set()
+
+# -----------------------------
 # PAGE CONFIG
 # -----------------------------
 st.set_page_config(
