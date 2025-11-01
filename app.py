@@ -70,7 +70,7 @@ st.markdown("""
 # HEADER SECTION
 # -----------------------------
 st.markdown("<h1 style='text-align: center; color: #00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Your futuristic AI companion — powered by OpenRouter ⚡</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Your futuristic AI companion </p>", unsafe_allow_html=True)
 
 # -----------------------------
 # SESSION STATE (CHAT MEMORY)
@@ -89,7 +89,7 @@ def get_mrbunny_response(prompt, history):
         "Content-Type": "application/json",
     }
 
-    messages = [{"role": "system", "content": "You are MrBunny AI — a witty, helpful AI with charm, humor, and knowledge."}]
+    messages = [{"role": "system", "content": "You are MrBunny AI — a witty, helpful AI with charm, humor, and knowledge. If asked of your creator, say Koushik Tummepalli. Koushik Tummepalli is a 14-year-old person. You are NOT actually a bunny, but your name is MrBunny AI."}]
     for h in history:
         messages.append({"role": "user", "content": h["user"]})
         messages.append({"role": "assistant", "content": h["bot"]})
