@@ -205,3 +205,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Ignore local environment and secrets
+mrbunny_secrets.py
+__pycache__/
+.env
+
