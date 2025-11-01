@@ -3,22 +3,6 @@ import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
 # -----------------------------
-# SESSION STATE
-# -----------------------------
-if "chats" not in st.session_state:
-    st.session_state.chats = {"Main Chat": []}
-if "current_chat" not in st.session_state:
-    st.session_state.current_chat = "Main Chat"
-
-# For the new sidebar conversations code
-if "conversations" not in st.session_state:
-    st.session_state.conversations = {}  # Or {"Main": {"name": "Main Chat", "messages": []}}
-if "current_convo" not in st.session_state:
-    st.session_state.current_convo = None
-if "rename_mode" not in st.session_state:
-    st.session_state.rename_mode = set()
-
-# -----------------------------
 # PAGE CONFIG
 # -----------------------------
 st.set_page_config(
@@ -88,6 +72,36 @@ if "chats" not in st.session_state:
     st.session_state.chats = {"Main Chat": []}
 if "current_chat" not in st.session_state:
     st.session_state.current_chat = "Main Chat"
+
+# Initialize conversation state
+if "conversations" not in st.session_state:
+    st.session_state.conversations = {}
+if "current_convo" not in st.session_state:
+    st.session_state.current_convo = None
+if "rename_mode" not in st.session_state:
+    st.session_state.rename_mode = set()
+
+# -----------------------------
+# CONVERSATION MANAGEMENT FUNCTIONS
+# -----------------------------
+def add_convo(name: str):
+    """Add a new conversation"""
+    convo_id = str(len(st.session_state.conversations) + 1)
+    st.session_state.conversations[convo_id] = {"name": name, "messages": []}
+    st.session_state.current_convo = convo_id
+
+def rename_convo(convo_id: str, new_name: str):
+    """Rename an existing conversation"""
+    if convo_id in st.session_state.conversations:
+        st.session_state.conversations[convo_id]["name"] = new_name
+
+def delete_convo(convo_id: str):
+    """Delete an existing conversation"""
+    if convo_id in st.session_state.conversations:
+        del st.session_state.conversations[convo_id]
+        # Reset current convo if it was deleted
+        if st.session_state.current_convo == convo_id:
+            st.session_state.current_convo = None
 
 # -----------------------------
 # SIDEBAR: Chat Management
