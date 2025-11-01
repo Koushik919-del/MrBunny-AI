@@ -7,7 +7,7 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 # PAGE CONFIG
 # -----------------------------
 st.set_page_config(
-    page_title="MrBunny AI 🐰",
+    page_title="MrBunny AI            ",
     page_icon="🐰",
     layout="centered"
 )
