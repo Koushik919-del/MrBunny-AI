@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
-
 # -----------------------------
 # PAGE CONFIG
 # -----------------------------
@@ -67,19 +66,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# HEADER SECTION
+# SESSION STATE
 # -----------------------------
-st.markdown("<h1 style='text-align: center; color: #00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Your futuristic AI companion </p>", unsafe_allow_html=True)
+if "chats" not in st.session_state:
+    st.session_state.chats = {"Main Chat": []}
+if "current_chat" not in st.session_state:
+    st.session_state.current_chat = "Main Chat"
 
 # -----------------------------
-# SESSION STATE (CHAT MEMORY)
+# SIDEBAR: Chat Management
 # -----------------------------
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+with st.sidebar:
+    st.title("💬 Chats")
+    
+    # Create new chat
+    new_name = st.text_input("New chat name", "")
+    if st.button("➕ New Chat"):
+        if new_name.strip() != "":
+            if new_name not in st.session_state.chats:
+                st.session_state.chats[new_name] = []
+                st.session_state.current_chat = new_name
+                st.success(f"Created chat '{new_name}'")
+                st.rerun()
+            else:
+                st.warning("Chat name already exists.")
+        else:
+            st.warning("Please enter a valid name.")
+    
+    # Chat selector
+    selected = st.radio(
+        "Select Chat",
+        list(st.session_state.chats.keys()),
+        index=list(st.session_state.chats.keys()).index(st.session_state.current_chat)
+    )
+    if selected != st.session_state.current_chat:
+        st.session_state.current_chat = selected
+        st.rerun()
 
 # -----------------------------
-# FUNCTION TO GET RESPONSE
+# FUNCTIONS
 # -----------------------------
 def get_mrbunny_response(prompt, history):
     """Send the user prompt + history to the OpenRouter API"""
@@ -110,22 +135,33 @@ def get_mrbunny_response(prompt, history):
         return f"⚠️ Error {response.status_code}: {response.text}"
 
 # -----------------------------
-# CHAT INTERFACE
+# HEADER
 # -----------------------------
+st.markdown("<h1 style='text-align: center; color: #00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Your futuristic AI companion </p>", unsafe_allow_html=True)
+
+# -----------------------------
+# CHAT DISPLAY
+# -----------------------------
+chat_history = st.session_state.chats[st.session_state.current_chat]
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 
-for chat in st.session_state.chat_history:
+for chat in chat_history:
     st.markdown(f"<div class='chat-bubble user-bubble'><b>You:</b> {chat['user']}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='chat-bubble bot-bubble'><b>MrBunny:</b> {chat['bot']}</div>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+# -----------------------------
+# CHAT INPUT
+# -----------------------------
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
     with st.spinner("MrBunny AI is thinking... 🧠"):
-        reply = get_mrbunny_response(user_input, st.session_state.chat_history)
-    st.session_state.chat_history.append({"user": user_input, "bot": reply})
+        reply = get_mrbunny_response(user_input, chat_history)
+    chat_history.append({"user": user_input, "bot": reply})
+    st.session_state.chats[st.session_state.current_chat] = chat_history
     st.rerun()
 
 # -----------------------------
