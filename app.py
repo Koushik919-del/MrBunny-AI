@@ -25,12 +25,12 @@ st.set_page_config(
 
 st.title("MrBunny AI 🐰")
 
-user_info = login(
-    auth_provider="google",
-    client_id=GOOGLE_CLIENT_ID,
-    logout_button_text="Sign out",
-    key="auth"
-)
+# Google OAuth sign-in
+from streamlit_authenticator import Authenticate  # or your Google OAuth method
+# Initialize your authenticator here (replace with your method)
+authenticator = Authenticate(GOOGLE_CLIENT_ID)  # pseudo-code
+
+user_info = authenticator.login("Sign in with Google")
 
 if not user_info:
     st.stop()
