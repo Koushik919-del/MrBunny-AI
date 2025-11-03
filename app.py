@@ -17,6 +17,11 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 # ============================================
 # 🌐 GOOGLE SIGN-IN
 # ============================================
+# ============================================
+# 🌐 GOOGLE SIGN-IN (working)
+# ============================================
+from streamlit_auth_component import login  # make sure this is in requirements.txt
+
 st.set_page_config(
     page_title="MrBunny AI",
     page_icon="🐰",
@@ -25,13 +30,15 @@ st.set_page_config(
 
 st.title("MrBunny AI 🐰")
 
-# Google OAuth sign-in
-from streamlit_authenticator import Authenticate  # or your Google OAuth method
-# Initialize your authenticator here (replace with your method)
-authenticator = Authenticate(GOOGLE_CLIENT_ID)  # pseudo-code
+# Login with Google
+user_info = login(
+    auth_provider="google",
+    client_id=GOOGLE_CLIENT_ID,
+    logout_button_text="Sign out",
+    key="auth"
+)
 
-user_info = authenticator.login("Sign in with Google")
-
+# Stop if not logged in
 if not user_info:
     st.stop()
 
