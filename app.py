@@ -5,7 +5,7 @@ import subprocess, sys, os
 
 if os.path.exists("requirements.txt"):
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], stdout=subprocess.DEVNULL)
-pip install -r requirements.txt
+
 # ============================================
 # 🚀 IMPORTS
 # ============================================
