@@ -1,19 +1,51 @@
+# ============================================
+# 🧩 AUTO-INSTALL REQUIREMENTS (ON STARTUP)
+# ============================================
+import subprocess, sys, os
+
+if os.path.exists("requirements.txt"):
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], stdout=subprocess.DEVNULL)
+
+# ============================================
+# 🚀 IMPORTS
+# ============================================
 import streamlit as st
+from streamlit_auth_component import login
+from mrbunny_secrets import GOOGLE_CLIENT_ID
 import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
-# -----------------------------
-# PAGE CONFIG
-# -----------------------------
+# ============================================
+# 🌐 GOOGLE SIGN-IN
+# ============================================
 st.set_page_config(
-    page_title="MrBunny AI            ",
+    page_title="MrBunny AI",
     page_icon="🐰",
     layout="centered"
 )
 
-# -----------------------------
-# CUSTOM CSS (Tony Stark / Futuristic Style)
-# -----------------------------
+st.title("MrBunny AI 🐰")
+
+user_info = login(
+    auth_provider="google",
+    client_id=GOOGLE_CLIENT_ID,
+    logout_button_text="Sign out",
+    key="auth"
+)
+
+if not user_info:
+    st.stop()
+
+st.sidebar.success(f"Welcome, {user_info['name']} 👋")
+st.sidebar.caption(user_info['email'])
+
+# Create unique memory file per user
+user_email = user_info["email"].replace("@", "_").replace(".", "_")
+chat_file = f"chats_{user_email}.json"
+
+# ============================================
+# 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
+# ============================================
 st.markdown("""
     <style>
         body {
@@ -65,15 +97,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------
-# SESSION STATE
-# -----------------------------
+# ============================================
+# 🧠 SESSION STATE
+# ============================================
 if "chats" not in st.session_state:
     st.session_state.chats = {"Main Chat": []}
 if "current_chat" not in st.session_state:
     st.session_state.current_chat = "Main Chat"
 
-# Initialize conversation state
 if "conversations" not in st.session_state:
     st.session_state.conversations = {}
 if "current_convo" not in st.session_state:
@@ -81,35 +112,30 @@ if "current_convo" not in st.session_state:
 if "rename_mode" not in st.session_state:
     st.session_state.rename_mode = set()
 
-# -----------------------------
-# CONVERSATION MANAGEMENT FUNCTIONS
-# -----------------------------
+# ============================================
+# ⚙️ CONVERSATION MANAGEMENT
+# ============================================
 def add_convo(name: str):
-    """Add a new conversation"""
     convo_id = str(len(st.session_state.conversations) + 1)
     st.session_state.conversations[convo_id] = {"name": name, "messages": []}
     st.session_state.current_convo = convo_id
 
 def rename_convo(convo_id: str, new_name: str):
-    """Rename an existing conversation"""
     if convo_id in st.session_state.conversations:
         st.session_state.conversations[convo_id]["name"] = new_name
 
 def delete_convo(convo_id: str):
-    """Delete an existing conversation"""
     if convo_id in st.session_state.conversations:
         del st.session_state.conversations[convo_id]
-        # Reset current convo if it was deleted
         if st.session_state.current_convo == convo_id:
             st.session_state.current_convo = None
 
-# -----------------------------
-# SIDEBAR: Chat Management
-# -----------------------------
+# ============================================
+# 💬 SIDEBAR (Chat Management)
+# ============================================
 with st.sidebar:
     st.title("💬 Conversations")
 
-    # Form to create a new conversation
     with st.form("new_convo_form", clear_on_submit=True):
         new_convo_name = st.text_input("➕ Create New Conversation", key="new_convo_name")
         create_clicked = st.form_submit_button("Create")
@@ -117,21 +143,17 @@ with st.sidebar:
             add_convo(new_convo_name.strip())
             st.rerun()
 
-    # Manage existing conversations
     for convo_id, convo in list(st.session_state.conversations.items()):
         is_current = convo_id == st.session_state.current_convo
         row = st.container()
         cols = row.columns([0.75, 0.15, 0.1])
 
-        # Label for conversation, highlight if current
         label = f"👉 {convo['name']}" if is_current else convo["name"]
 
-        # Select conversation
         if cols[0].button(label, key=f"select_{convo_id}"):
             st.session_state.current_convo = convo_id
             st.rerun()
 
-        # Rename button toggles rename mode
         if cols[1].button("✏️", key=f"rename_btn_{convo_id}"):
             if convo_id in st.session_state.rename_mode:
                 st.session_state.rename_mode.remove(convo_id)
@@ -139,7 +161,6 @@ with st.sidebar:
                 st.session_state.rename_mode.add(convo_id)
             st.rerun()
 
-        # If in rename mode, show input and save
         if convo_id in st.session_state.rename_mode:
             new_name = st.text_input("Rename to:", value=convo["name"], key=f"rename_input_{convo_id}")
             if st.button("💾 Save", key=f"save_rename_{convo_id}"):
@@ -149,16 +170,14 @@ with st.sidebar:
                 st.session_state.rename_mode.remove(convo_id)
                 st.rerun()
 
-        # Delete conversation
         if cols[2].button("🗑️", key=f"del_{convo_id}"):
             delete_convo(convo_id)
             st.rerun()
 
-# -----------------------------
-# FUNCTIONS
-# -----------------------------
+# ============================================
+# 🤖 OPENROUTER RESPONSE
+# ============================================
 def get_mrbunny_response(prompt, history):
-    """Send the user prompt + history to the OpenRouter API"""
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -185,15 +204,12 @@ def get_mrbunny_response(prompt, history):
     else:
         return f"⚠️ Error {response.status_code}: {response.text}"
 
-# -----------------------------
-# HEADER
-# -----------------------------
+# ============================================
+# 🗨️ CHAT DISPLAY
+# ============================================
 st.markdown("<h1 style='text-align: center; color: #00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center;'>Your futuristic AI companion </p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>Your futuristic AI companion</p>", unsafe_allow_html=True)
 
-# -----------------------------
-# CHAT DISPLAY
-# -----------------------------
 chat_history = st.session_state.chats[st.session_state.current_chat]
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 
@@ -203,9 +219,9 @@ for chat in chat_history:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# -----------------------------
-# CHAT INPUT
-# -----------------------------
+# ============================================
+# ⌨️ CHAT INPUT
+# ============================================
 user_input = st.chat_input("Type your message here...")
 
 if user_input:
@@ -215,8 +231,8 @@ if user_input:
     st.session_state.chats[st.session_state.current_chat] = chat_history
     st.rerun()
 
-# -----------------------------
-# FOOTER
-# -----------------------------
+# ============================================
+# ❤️ FOOTER
+# ============================================
 st.markdown("---")
 st.markdown("<p style='text-align:center; color:#888;'>Made with ❤️ by Koushik Tummepalli</p>", unsafe_allow_html=True)
