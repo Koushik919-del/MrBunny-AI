@@ -1,3 +1,4 @@
 streamlit
-openai
 requests
+gtts
+streamlit-auth-component
