@@ -1,0 +1,5 @@
+streamlit
+streamlit-auth-component
+openai
+requests
+gtts
