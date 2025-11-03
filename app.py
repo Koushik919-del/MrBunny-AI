@@ -15,10 +15,7 @@ import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN
-# ============================================
-# ============================================
-# 🌐 GOOGLE SIGN-IN (working)
+# 🌐 GOOGLE SIGN-IN (fixed)
 # ============================================
 from streamlit_auth_component import login  # make sure this is in requirements.txt
 
