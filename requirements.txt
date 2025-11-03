@@ -1,3 +1,5 @@
 streamlit
+google-auth-oauthlib
 requests
-git+https://github.com/jrieke/streamlit-auth-component.git
+gtts
+openai
