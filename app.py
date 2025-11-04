@@ -25,7 +25,7 @@ from streamlit_oauth import OAuth2Component
 # also be registered as an Authorized Redirect URI in your Google
 # Cloud Console OAuth 2.0 Client settings.
 # For local testing, this is usually "http://localhost:8501"
-REDIRECT_URI = "https://your-app-url.streamlit.app" # <-- **CHANGE THIS to your app's actual URL**
+REDIRECT_URI = "https://mrbunny-ai.streamlit.app" # <-- **CHANGE THIS to your app's actual URL**
 
 oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
