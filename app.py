@@ -10,7 +10,7 @@ if os.path.exists("requirements.txt"):
 # 🚀 IMPORTS
 # ============================================
 import streamlit as st
-from mrbunny_secrets import GOOGLE_CLIENT_ID
+from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
