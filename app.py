@@ -24,9 +24,9 @@ oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
     authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
-    token_endpoint="https://oauth2.googleapis.com/token",
-    revoke_endpoint="https://oauth2.googleapis.com/revoke",
+    token_endpoint="https://oauth2.googleapis.com/token"
 )
+
 
 # Google button
 result = oauth2.authorize_button(
