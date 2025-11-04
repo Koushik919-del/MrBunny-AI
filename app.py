@@ -16,9 +16,8 @@ import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN (fixed)
+# 🌐 GOOGLE SIGN-IN (verified version)
 # ============================================
-
 from streamlit_oauth import OAuth2Component
 
 oauth2 = OAuth2Component(
@@ -29,15 +28,20 @@ oauth2 = OAuth2Component(
     revoke_endpoint="https://oauth2.googleapis.com/revoke",
 )
 
+# Google button
 result = oauth2.authorize_button(
     name="Sign in with Google",
     icon="🔑",
     scopes=["openid", "email", "profile"],
-    key="google_login",
+    key="google_login"
 )
 
-if result and "token" in result:
-    user_info = oauth2.get_user_info(result["token"])
+if result:
+    try:
+        user_info = oauth2.get_user_info(result.get("token"))
+    except Exception as e:
+        st.error(f"Failed to get user info: {e}")
+        st.stop()
 else:
     user_info = None
 
@@ -45,8 +49,6 @@ if not user_info:
     st.warning("Please sign in with Google to continue.")
     st.stop()
 
-st.sidebar.success(f"Welcome, {user_info['name']} 👋")
-st.sidebar.caption(user_info['email'])
 # ============================================
 # 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
 # ============================================
