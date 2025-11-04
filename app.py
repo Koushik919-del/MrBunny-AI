@@ -1,3 +1,4 @@
+from streamlit_oauth import OAuth2Component
 # ============================================
 # 🧩 AUTO-INSTALL REQUIREMENTS (ON STARTUP)
 # ============================================
