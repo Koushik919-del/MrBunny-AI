@@ -18,76 +18,34 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 # 🌐 GOOGLE SIGN-IN (fixed)
 # ============================================
 
-st.set_page_config(
-    page_title="MrBunny AI",
-    page_icon="🐰",
-    layout="centered"
+from streamlit_oauth import OAuth2Component
+
+oauth2 = OAuth2Component(
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
+    token_endpoint="https://oauth2.googleapis.com/token",
+    revoke_endpoint="https://oauth2.googleapis.com/revoke",
 )
 
-st.title("MrBunny AI 🐰")
+result = oauth2.authorize_button(
+    name="Sign in with Google",
+    icon="🔑",
+    scopes=["openid", "email", "profile"],
+    key="google_login",
+)
 
-# Login with Google
-from google_auth_oauthlib.flow import Flow
-from google.oauth2 import id_token
-import google.auth.transport.requests
-
-# --- Google OAuth Sign-In ---
-if "user" not in st.session_state:
-    client_config = {
-        "web": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
-            "redirect_uris": ["http://localhost:8501/"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token"
-        }
-    }
-
-    flow = Flow.from_client_config(
-        client_config,
-        scopes=["openid", "email", "profile"],
-        redirect_uri="http://localhost:8501/"
-    )
-
-    auth_url, _ = flow.authorization_url(prompt='consent')
-
-    st.markdown(f"[🔐 Sign in with Google]({auth_url})")
-
-    query_params = st.query_params
-    if "code" in query_params:
-        code = query_params["code"]
-        flow.fetch_token(code=code)
-        creds = flow.credentials
-
-        request = google.auth.transport.requests.Request()
-        id_info = id_token.verify_oauth2_token(
-            creds.id_token, request, GOOGLE_CLIENT_ID
-        )
-
-        st.session_state["user"] = {
-            "name": id_info["name"],
-            "email": id_info["email"]
-        }
-        st.rerun()
+if result and "token" in result:
+    user_info = oauth2.get_user_info(result["token"])
 else:
-    user_info = st.session_state["user"]
-    st.sidebar.success(f"Welcome, {user_info['name']} 👋")
-    st.sidebar.caption(user_info["email"])
-    user_email = user_info["email"].replace("@", "_").replace(".", "_")
-    chat_file = f"chats_{user_email}.json"
+    user_info = None
 
-
-# Stop if not logged in
 if not user_info:
+    st.warning("Please sign in with Google to continue.")
     st.stop()
 
 st.sidebar.success(f"Welcome, {user_info['name']} 👋")
 st.sidebar.caption(user_info['email'])
-
-# Create unique memory file per user
-user_email = user_info["email"].replace("@", "_").replace(".", "_")
-chat_file = f"chats_{user_email}.json"
-
 # ============================================
 # 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
 # ============================================
