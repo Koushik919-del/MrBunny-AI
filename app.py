@@ -18,37 +18,35 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 # ============================================
 # 🌐 GOOGLE SIGN-IN (verified version)
 # ============================================
+# ============================================
+# 🌐 GOOGLE SIGN-IN (verified version)
+# ============================================
 from streamlit_oauth import OAuth2Component
+
+# 💡 1. DEFINE YOUR REDIRECT_URI
+# This MUST be the public URL of your Streamlit app, and it must
+# also be registered as an Authorized Redirect URI in your Google
+# Cloud Console OAuth 2.0 Client settings.
+# For local testing, this is usually "http://localhost:8501"
+REDIRECT_URI = "https://your-app-url.streamlit.app" # <-- **CHANGE THIS to your app's actual URL**
 
 oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
+    # 💡 2. ADD REDIRECT_URI HERE
+    redirect_uri=REDIRECT_URI, 
     authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
     token_endpoint="https://oauth2.googleapis.com/token"
 )
 
 
-# Google button
+# Google button (No changes needed here, as the component has the URI now)
 result = oauth2.authorize_button(
     name="Sign in with Google",
     icon="🔑",
     scopes=["openid", "email", "profile"],
     key="google_login"
 )
-
-if result:
-    try:
-        user_info = oauth2.get_user_info(result.get("token"))
-    except Exception as e:
-        st.error(f"Failed to get user info: {e}")
-        st.stop()
-else:
-    user_info = None
-
-if not user_info:
-    st.warning("Please sign in with Google to continue.")
-    st.stop()
-
 # ============================================
 # 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
 # ============================================
