@@ -17,7 +17,6 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 # ============================================
 # 🌐 GOOGLE SIGN-IN (fixed)
 # ============================================
-from streamlit_auth_component import login  # make sure this is in requirements.txt
 
 st.set_page_config(
     page_title="MrBunny AI",
