@@ -61,9 +61,8 @@ if user_info:
     st.sidebar.success(f"Welcome, {user_info['name']} 👋")
     st.sidebar.caption(user_info['email'])
 
-# 🛑 NOTE: Remove the redundant imports below (if they existed):
-# import streamlit as st
-# from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+import streamlit as st
+from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 # ============================================
 # 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
 # ============================================
