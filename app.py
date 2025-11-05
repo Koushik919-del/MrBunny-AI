@@ -16,38 +16,54 @@ import requests
 from mrbunny_secrets import OPENROUTER_API_KEY
 
 #=============================================
-#Google Sign In
+# 🌐 GOOGLE SIGN-IN (FIXED VERSION)
 #=============================================
-#=============================================
-#Google Sign In
-#=============================================
-import streamlit as st
-from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
 # 1. Define the REDIRECT_URI
-# This MUST be the full public URL of your Streamlit app (e.g., https://myapp.streamlit.app)
-# and must be registered in your Google Cloud Console's Authorized redirect URIs.
-REDIRECT_URI = "https://your-app-url.streamlit.app" # <-- **CHANGE THIS TO YOUR ACTUAL URL**
+# Replace this placeholder with your actual, deployed Streamlit URL
+REDIRECT_URI = "https://mrbunny-ai.streamlit.app" 
 
-# Initialize OAuth2Component
+# 2. Initialize OAuth2Component with ALL required arguments
 oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
-    # It is best practice to include redirect_uri here as well
+    # This was the missing required argument causing the TypeError
     redirect_uri=REDIRECT_URI, 
     authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
     token_endpoint="https://oauth2.googleapis.com/token"
 )
 
-# Create Google sign-in button
+# 3. Create Google sign-in button
+# We no longer need to pass redirect_uri here as it's in the component initialization
 result = oauth2.authorize_button(
     name="Sign in with Google",
-    # 2. Pass the required redirect_uri to the button function
-    redirect_uri=REDIRECT_URI, # <--- **FIX HERE**
-    scopes=["openid", "email", "profile"]
+    icon="🔑",
+    scopes=["openid", "email", "profile"],
+    key="google_login" # Added 'key' for best practice, though not strictly required here
 )
 
-# ... rest of your code
+# 4. Handle login result
+if result and "token" in result:
+    try:
+        user_info = oauth2.get_user_info(result["token"])
+        st.session_state["user_info"] = user_info # Store user_info in session state
+    except Exception as e:
+        st.error(f"Failed to get user info after login: {e}")
+        st.stop()
+else:
+    # If the app is just starting or sign-in hasn't happened
+    st.warning("Please sign in with Google to continue.")
+    st.stop()
+
+# 5. Display user info in sidebar (Now uses st.session_state)
+user_info = st.session_state.get("user_info")
+if user_info:
+    st.sidebar.success(f"Welcome, {user_info['name']} 👋")
+    st.sidebar.caption(user_info['email'])
+
+# 🛑 NOTE: Remove the redundant imports below (if they existed):
+# import streamlit as st
+# from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 # ============================================
 # 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
 # ============================================
