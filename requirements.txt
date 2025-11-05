@@ -1,4 +1,6 @@
 streamlit
-openai
+streamlit-oauth
+google-auth
+google-auth-oauthlib
 requests
-streamlit-oauth2
+gtts
