@@ -18,13 +18,23 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 #=============================================
 #Google Sign In
 #=============================================
+#=============================================
+#Google Sign In
+#=============================================
 import streamlit as st
 from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
-# Initialize OAuth2Component with only supported arguments
+# 1. Define the REDIRECT_URI
+# This MUST be the full public URL of your Streamlit app (e.g., https://myapp.streamlit.app)
+# and must be registered in your Google Cloud Console's Authorized redirect URIs.
+REDIRECT_URI = "https://your-app-url.streamlit.app" # <-- **CHANGE THIS TO YOUR ACTUAL URL**
+
+# Initialize OAuth2Component
 oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
+    # It is best practice to include redirect_uri here as well
+    redirect_uri=REDIRECT_URI, 
     authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
     token_endpoint="https://oauth2.googleapis.com/token"
 )
@@ -32,20 +42,12 @@ oauth2 = OAuth2Component(
 # Create Google sign-in button
 result = oauth2.authorize_button(
     name="Sign in with Google",
+    # 2. Pass the required redirect_uri to the button function
+    redirect_uri=REDIRECT_URI, # <--- **FIX HERE**
     scopes=["openid", "email", "profile"]
 )
 
-# Handle login result
-if result and "token" in result:
-    user_info = oauth2.get_user_info(result["token"])
-else:
-    st.warning("Please sign in with Google to continue.")
-    st.stop()
-
-# Display user info in sidebar
-st.sidebar.success(f"Welcome, {user_info['name']} 👋")
-st.sidebar.caption(user_info['email'])
-
+# ... rest of your code
 # ============================================
 # 🎨 CUSTOM CSS (Tony Stark / Futuristic Style)
 # ============================================
