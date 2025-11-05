@@ -18,7 +18,6 @@ from mrbunny_secrets import OPENROUTER_API_KEY
 #=============================================
 #Google Sign In
 #=============================================
-from streamlit_oauth2 import OAuth2Component
 import streamlit as st
 from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
