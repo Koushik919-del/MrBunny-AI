@@ -17,19 +17,18 @@ except ImportError:
     st.stop()
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN CONFIG (POSITIONAL VERSION)
+# 🌐 GOOGLE SIGN-IN CONFIG (FIXED FOR 0.1.7)
 # ============================================
 REDIRECT_URI = "https://mrbunny-ai.streamlit.app"
 
-# We pass the values directly without the "name=" labels.
-# The order is: ID, SECRET, AUTH_URL, TOKEN_URL, REFRESH_URL, REDIRECT_URI
 oauth2 = OAuth2Component(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    "https://accounts.google.com/o/oauth2/v2/auth",
-    "https://oauth2.googleapis.com/token",
-    "https://oauth2.googleapis.com/token",
-    REDIRECT_URI
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
+    token_endpoint="https://oauth2.googleapis.com/token",
+    refresh_token_endpoint="https://oauth2.googleapis.com/token",
+    revoke_token_endpoint=None, # Set this to None to avoid the MissingRevokeToken error
+    client_name="google",
 )
 # ============================================
 # 🎨 CUSTOM CSS
@@ -91,6 +90,17 @@ with st.sidebar:
             st.session_state.current_convo = name
             st.rerun()
 
+if "user_info" not in st.session_state:
+    result = oauth2.authorize_button(
+        name="Sign in with Google",
+        icon="🔑",
+        scopes=["openid", "email", "profile"],
+        key="google_login",
+        redirect_uri=REDIRECT_URI,
+    )
+    if result and "token" in result:
+        st.session_state["user_info"] = oauth2.get_user_info(result["token"])
+        st.rerun()
 # ============================================
 # 🤖 AI & VOICE FUNCTIONS
 # ============================================
