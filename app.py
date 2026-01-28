@@ -17,21 +17,19 @@ except ImportError:
     st.stop()
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN CONFIG (UPDATED SYNTAX)
+# 🌐 GOOGLE SIGN-IN CONFIG (POSITIONAL VERSION)
 # ============================================
 REDIRECT_URI = "https://mrbunny-ai.streamlit.app"
 
-# The latest version of streamlit-oauth expects 'authorize_endpoint' 
-# and 'token_endpoint' as strings.
+# We pass the values directly without the "name=" labels.
+# The order is: ID, SECRET, AUTH_URL, TOKEN_URL, REFRESH_URL, REDIRECT_URI
 oauth2 = OAuth2Component(
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
-    authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
-    token_endpoint="https://oauth2.googleapis.com/token",
-    refresh_token_endpoint="https://oauth2.googleapis.com/token",
-    # Notice: some versions don't want redirect_uri here, but 
-    # if it's required, keep the line below.
-    redirect_uri=REDIRECT_URI
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    "https://accounts.google.com/o/oauth2/v2/auth",
+    "https://oauth2.googleapis.com/token",
+    "https://oauth2.googleapis.com/token",
+    REDIRECT_URI
 )
 # ============================================
 # 🎨 CUSTOM CSS
