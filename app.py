@@ -1,151 +1,94 @@
-import subprocess, sys, os
 import streamlit as st
 import requests
 import io
 from gtts import gTTS
-from streamlit_oauth import OAuth2Component
-
-# 🧩 AUTO-INSTALL REQUIREMENTS
-if os.path.exists("requirements.txt"):
-    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], stdout=subprocess.DEVNULL)
-
-# 🔑 IMPORT SECRETS
-try:
-    from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENROUTER_API_KEY
-except ImportError:
-    st.error("mrbunny_secrets.py not found!")
-    st.stop()
+from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENROUTER_API_KEY
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN CONFIG (POSITIONAL FIX)
+# 🌐 GOOGLE AUTH CONFIG (MANUAL FLOW)
 # ============================================
 REDIRECT_URI = "https://mrbunny-ai.streamlit.app"
+AUTH_URL = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={GOOGLE_CLIENT_ID}&response_type=code&scope=openid%20email%20profile&redirect_uri={REDIRECT_URI}&prompt=consent"
 
-# We pass these as raw values in the exact order the library expects:
-# 1. Client ID
-# 2. Client Secret
-# 3. Authorization Endpoint
-# 4. Token Endpoint
-# 5. Refresh Token Endpoint (Same as token for Google)
-# 6. Revoke Token Endpoint (None to avoid the RevokeAuthMethod error)
-oauth2 = OAuth2Component(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    "https://accounts.google.com/o/oauth2/v2/auth",
-    "https://oauth2.googleapis.com/token",
-    "https://oauth2.googleapis.com/token",
-    None,
-    REDIRECT_URI
-)
-# ============================================
-# 🎨 CUSTOM CSS
-# ============================================
-st.markdown("""
-    <style>
-        .stApp { background: radial-gradient(circle at top left, #0a0f24, #03060d); color: white; }
-        .stChatInput input { background-color: #1c1f2b !important; color: #fff !important; border: 1px solid #00ffff50 !important; }
-        .stButton>button { background: linear-gradient(90deg, #007bff, #00ffff); color: white; border: none; box-shadow: 0 0 15px #00ffff70; border-radius: 8px; }
-        .chat-bubble { padding: 12px; border-radius: 12px; margin: 5px 0; max-width: 80%; line-height: 1.5; }
-        .user-bubble { background-color: #0055ff30; border: 1px solid #007bff; margin-left: auto; color: #e0e0e0; }
-        .bot-bubble { background-color: #00ffff20; border: 1px solid #00ffff; margin-right: auto; color: #ffffff; }
-    </style>
-""", unsafe_allow_html=True)
+def get_google_user(code):
+    # Exchange code for token
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "code": code,
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    res = requests.post(token_url, data=data).json()
+    access_token = res.get("access_token")
+    # Get user info
+    user_res = requests.get(f"https://www.googleapis.com/oauth2/v1/userinfo?access_token={access_token}")
+    return user_res.json()
 
 # ============================================
-# 🧠 AUTHENTICATION FLOW (FIXED)
+# 🧠 AUTH LOGIC
 # ============================================
 if "user_info" not in st.session_state:
-    # We REMOVE redirect_uri from here because it's already in the 'oauth2' object
-    result = oauth2.authorize_button(
-        name="Sign in with Google",
-        icon="🔑",
-        scopes=["openid", "email", "profile"],
-        key="google_login"
-    )
-    if result and "token" in result:
-        st.session_state["user_info"] = oauth2.get_user_info(result["token"])
-        st.rerun()
+    # Check if we are returning from Google
+    query_params = st.query_params
+    if "code" in query_params:
+        with st.spinner("Authenticating..."):
+            user_data = get_google_user(query_params["code"])
+            st.session_state.user_info = user_data
+            st.query_params.clear()
+            st.rerun()
     else:
-        st.warning("Please sign in with Google to enter the AI terminal.")
+        st.markdown(f"<h1 style='text-align:center; color:#00ffff;'>🐰 MrBunny AI</h1>", unsafe_allow_html=True)
+        st.write("Welcome to the futuristic terminal. Please sign in.")
+        st.markdown(f'<a href="{AUTH_URL}" target="_self"><button style="width:100%; padding:15px; background:linear-gradient(90deg, #007bff, #00ffff); border:none; border-radius:10px; color:white; font-weight:bold; cursor:pointer;">🔑 Sign in with Google</button></a>', unsafe_allow_html=True)
         st.stop()
+
 # ============================================
-# ⚙️ CHAT INITIALIZATION
+# 🎨 UI & CHAT LOGIC (Unified)
 # ============================================
+st.set_page_config(page_title="MrBunny AI", page_icon="🐰")
+
 if "conversations" not in st.session_state:
     st.session_state.conversations = {"Main Chat": []}
 if "current_convo" not in st.session_state:
     st.session_state.current_convo = "Main Chat"
 
-# ============================================
-# 💬 SIDEBAR
-# ============================================
 with st.sidebar:
-    st.title("🐰 MrBunny AI")
-    st.success(f"User: {st.session_state.user_info.get('name', 'User')}")
+    st.success(f"User: {st.session_state.user_info.get('name')}")
+    if st.button("🚪 Logout"):
+        st.session_state.clear()
+        st.rerun()
     
-    with st.form("new_chat_form", clear_on_submit=True):
-        new_name = st.text_input("➕ New Chat")
-        if st.form_submit_button("Create") and new_name.strip():
-            st.session_state.conversations[new_name.strip()] = []
-            st.session_state.current_convo = new_name.strip()
-            st.rerun()
-
     st.markdown("---")
-    for name in list(st.session_state.conversations.keys()):
-        if st.button(name, key=f"btn_{name}", use_container_width=True):
-            st.session_state.current_convo = name
-            st.rerun()
-
-# ============================================
-# 🤖 AI & VOICE FUNCTIONS
-# ============================================
-def get_mrbunny_response(prompt, history):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-    
-    messages = [{"role": "system", "content": "You are MrBunny AI—witty and futuristic. Created by 14-year-old Koushik Tummepalli."}]
-    for chat in history:
-        messages.append({"role": "user", "content": chat["user"]})
-        messages.append({"role": "assistant", "content": chat["bot"]})
-    messages.append({"role": "user", "content": prompt})
-
-    try:
-        response = requests.post(url, headers=headers, json={"model": "openrouter/auto", "messages": messages})
-        return response.json()["choices"][0]["message"]["content"]
-    except:
-        return "⚠️ Neural connection error."
-
-def speak(text):
-    tts = gTTS(text=text, lang='en')
-    audio_data = io.BytesIO()
-    tts.write_to_fp(audio_data)
-    return audio_data
-
-# ============================================
-# 🗨️ MAIN CHAT INTERFACE
-# ============================================
-st.markdown(f"<h1 style='text-align: center; color: #00ffff;'>{st.session_state.current_convo}</h1>", unsafe_allow_html=True)
-
-chat_history = st.session_state.conversations[st.session_state.current_convo]
-
-for chat in chat_history:
-    st.markdown(f"<div class='chat-bubble user-bubble'><b>You:</b> {chat['user']}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='chat-bubble bot-bubble'><b>MrBunny:</b> {chat['bot']}</div>", unsafe_allow_html=True)
-
-user_input = st.chat_input("Message MrBunny...")
-
-if user_input:
-    with st.spinner("Calculating..."):
-        reply = get_mrbunny_response(user_input, chat_history)
-        chat_history.append({"user": user_input, "bot": reply})
-        st.session_state.conversations[st.session_state.current_convo] = chat_history
+    new_chat = st.text_input("➕ New Chat")
+    if st.button("Create") and new_chat:
+        st.session_state.conversations[new_chat] = []
+        st.session_state.current_convo = new_chat
         st.rerun()
 
-if chat_history:
-    with st.sidebar:
-        st.markdown("---")
-        if st.button("🔊 Voice Sync"):
-            audio = speak(chat_history[-1]['bot'])
-            st.audio(audio, format="audio/mp3")
+# --- OpenRouter Call ---
+def ask_ai(prompt, history):
+    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+    msgs = [{"role": "system", "content": "You are MrBunny AI, a witty AI created by 14-year-old Koushik Tummepalli."}]
+    for h in history:
+        msgs.append({"role":"user", "content":h["user"]})
+        msgs.append({"role":"assistant", "content":h["bot"]})
+    msgs.append({"role":"user", "content":prompt})
+    
+    r = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json={"model": "openrouter/auto", "messages": msgs})
+    return r.json()["choices"][0]["message"]["content"]
 
-st.sidebar.markdown("<p style='text-align:center; font-size: 10px;'>Made by Koushik Tummepalli</p>", unsafe_allow_html=True)
+# --- Chat UI ---
+st.title(f"🐰 {st.session_state.current_convo}")
+hist = st.session_state.conversations[st.session_state.current_convo]
+
+for m in hist:
+    with st.chat_message("user"): st.write(m["user"])
+    with st.chat_message("assistant"): st.write(m["bot"])
+
+user_input = st.chat_input("Say something...")
+if user_input:
+    bot_reply = ask_ai(user_input, hist)
+    hist.append({"user": user_input, "bot": bot_reply})
+    st.rerun()
