@@ -8,6 +8,7 @@ from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENROUTER_A
 # 🌐 GOOGLE AUTH CONFIG (MANUAL FLOW)
 # ============================================
 REDIRECT_URI = "https://mrbunny-ai.streamlit.app"
+# Updated line:
 AUTH_URL = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={GOOGLE_CLIENT_ID}&response_type=code&scope=openid%20email%20profile&redirect_uri={REDIRECT_URI}&prompt=select_account"
 
 def get_google_user(code):
