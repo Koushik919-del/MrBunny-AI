@@ -13,26 +13,26 @@ if os.path.exists("requirements.txt"):
 try:
     from mrbunny_secrets import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENROUTER_API_KEY
 except ImportError:
-    st.error("mrbunny_secrets.py not found! Please ensure it exists with your API keys.")
+    st.error("mrbunny_secrets.py not found!")
     st.stop()
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN CONFIG
+# 🌐 GOOGLE SIGN-IN CONFIG (FIXED)
 # ============================================
 REDIRECT_URI = "https://mrbunny-ai.streamlit.app"
 
-# Fixed the TypeError by using authorize_url instead of authorize_endpoint
+# We include redirect_uri here. 
+# We use 'authorize_url' and 'token_url' (no extras like 'refresh')
 oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
-    redirect_uri=REDIRECT_URI,
     authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
-    token_endpoint="https://oauth2.googleapis.com/token",
-    refresh_token_endpoint="https://oauth2.googleapis.com/token"
+    token_url="https://oauth2.googleapis.com/token",
+    redirect_uri=REDIRECT_URI
 )
 
 # ============================================
-# 🎨 CUSTOM CSS (Tony Stark Style)
+# 🎨 CUSTOM CSS
 # ============================================
 st.markdown("""
     <style>
@@ -46,14 +46,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# 🧠 SESSION STATE & AUTH
+# 🧠 AUTHENTICATION FLOW
 # ============================================
 if "user_info" not in st.session_state:
     result = oauth2.authorize_button(
         name="Sign in with Google",
         icon="🔑",
         scopes=["openid", "email", "profile"],
-        key="google_login"
+        key="google_login",
+        redirect_uri=REDIRECT_URI,
     )
     if result and "token" in result:
         st.session_state["user_info"] = oauth2.get_user_info(result["token"])
@@ -62,7 +63,9 @@ if "user_info" not in st.session_state:
         st.warning("Please sign in with Google to enter the AI terminal.")
         st.stop()
 
-# Initialize Chat Logic
+# ============================================
+# ⚙️ CHAT INITIALIZATION
+# ============================================
 if "conversations" not in st.session_state:
     st.session_state.conversations = {"Main Chat": []}
 if "current_convo" not in st.session_state:
@@ -73,43 +76,39 @@ if "current_convo" not in st.session_state:
 # ============================================
 with st.sidebar:
     st.title("🐰 MrBunny AI")
-    st.success(f"Welcome, {st.session_state.user_info.get('name', 'User')} 👋")
+    st.success(f"User: {st.session_state.user_info.get('name', 'Auth User')}")
     
-    # New Conversation Form
     with st.form("new_chat_form", clear_on_submit=True):
-        new_name = st.text_input("➕ New Timeline Name")
+        new_name = st.text_input("➕ New Chat")
         if st.form_submit_button("Create") and new_name.strip():
             st.session_state.conversations[new_name.strip()] = []
             st.session_state.current_convo = new_name.strip()
             st.rerun()
 
     st.markdown("---")
-    st.subheader("📜 History")
     for name in list(st.session_state.conversations.keys()):
         if st.button(name, key=f"btn_{name}", use_container_width=True):
             st.session_state.current_convo = name
             st.rerun()
 
 # ============================================
-# 🤖 AI & VOICE LOGIC
+# 🤖 AI & VOICE FUNCTIONS
 # ============================================
 def get_mrbunny_response(prompt, history):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
     
-    messages = [{"role": "system", "content": "You are MrBunny AI—witty, helpful, and charming. Created by 14-year-old Koushik Tummepalli."}]
+    messages = [{"role": "system", "content": "You are MrBunny AI—witty and futuristic. Created by 14-year-old Koushik Tummepalli."}]
     for chat in history:
         messages.append({"role": "user", "content": chat["user"]})
         messages.append({"role": "assistant", "content": chat["bot"]})
     messages.append({"role": "user", "content": prompt})
 
-    data = {"model": "openrouter/auto", "messages": messages, "temperature": 0.7}
-    
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json={"model": "openrouter/auto", "messages": messages})
         return response.json()["choices"][0]["message"]["content"]
     except:
-        return "⚠️ Connection to neural network failed."
+        return "⚠️ Neural connection error."
 
 def speak(text):
     tts = gTTS(text=text, lang='en')
@@ -118,34 +117,30 @@ def speak(text):
     return audio_data
 
 # ============================================
-# 🗨️ CHAT INTERFACE
+# 🗨️ MAIN CHAT INTERFACE
 # ============================================
 st.markdown(f"<h1 style='text-align: center; color: #00ffff;'>{st.session_state.current_convo}</h1>", unsafe_allow_html=True)
 
 chat_history = st.session_state.conversations[st.session_state.current_convo]
 
-# Display history
 for chat in chat_history:
     st.markdown(f"<div class='chat-bubble user-bubble'><b>You:</b> {chat['user']}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='chat-bubble bot-bubble'><b>MrBunny:</b> {chat['bot']}</div>", unsafe_allow_html=True)
 
-# Input
 user_input = st.chat_input("Message MrBunny...")
 
 if user_input:
-    # Add user message
-    with st.spinner("MrBunny is calculating..."):
+    with st.spinner("Calculating..."):
         reply = get_mrbunny_response(user_input, chat_history)
         chat_history.append({"user": user_input, "bot": reply})
         st.session_state.conversations[st.session_state.current_convo] = chat_history
         st.rerun()
 
-# Footer / Voice Playback for last message
 if chat_history:
     with st.sidebar:
         st.markdown("---")
-        if st.button("🔊 Read Last Message"):
+        if st.button("🔊 Voice Sync"):
             audio = speak(chat_history[-1]['bot'])
             st.audio(audio, format="audio/mp3")
 
-st.sidebar.markdown("<p style='text-align:center; font-size: 12px;'>Made by Koushik Tummepalli</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='text-align:center; font-size: 10px;'>Made by Koushik Tummepalli</p>", unsafe_allow_html=True)
