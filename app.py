@@ -133,4 +133,15 @@ user_input = st.chat_input("Message MrBunny...")
 if user_input:
     with st.spinner("Calculating..."):
         reply = get_mrbunny_response(user_input, chat_history)
-        chat_history
+        chat_history.append({"user": user_input, "bot": reply})
+        st.session_state.conversations[st.session_state.current_convo] = chat_history
+        st.rerun()
+
+if chat_history:
+    with st.sidebar:
+        st.markdown("---")
+        if st.button("🔊 Voice Sync"):
+            audio = speak(chat_history[-1]['bot'])
+            st.audio(audio, format="audio/mp3")
+
+st.sidebar.markdown("<p style='text-align:center; font-size: 10px;'>Made by Koushik Tummepalli</p>", unsafe_allow_html=True)
