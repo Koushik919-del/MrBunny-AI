@@ -52,15 +52,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================
-# 🧠 AUTHENTICATION FLOW
+# 🧠 AUTHENTICATION FLOW (FIXED)
 # ============================================
 if "user_info" not in st.session_state:
+    # We REMOVE redirect_uri from here because it's already in the 'oauth2' object
     result = oauth2.authorize_button(
         name="Sign in with Google",
         icon="🔑",
         scopes=["openid", "email", "profile"],
-        key="google_login",
-        redirect_uri=REDIRECT_URI,
+        key="google_login"
     )
     if result and "token" in result:
         st.session_state["user_info"] = oauth2.get_user_info(result["token"])
@@ -68,7 +68,6 @@ if "user_info" not in st.session_state:
     else:
         st.warning("Please sign in with Google to enter the AI terminal.")
         st.stop()
-
 # ============================================
 # ⚙️ CHAT INITIALIZATION
 # ============================================
