@@ -17,19 +17,21 @@ except ImportError:
     st.stop()
 
 # ============================================
-# 🌐 GOOGLE SIGN-IN CONFIG (FIXED FOR 0.1.7)
+# 🌐 GOOGLE SIGN-IN CONFIG (CORRECTED FOR 0.1.7)
 # ============================================
 REDIRECT_URI = "https://mrbunny-ai.streamlit.app"
 
+# In 0.1.7, the keyword is 'authorization_endpoint' (with 'ation')
 oauth2 = OAuth2Component(
     client_id=GOOGLE_CLIENT_ID,
     client_secret=GOOGLE_CLIENT_SECRET,
-    authorize_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
+    authorization_endpoint="https://accounts.google.com/o/oauth2/v2/auth",
     token_endpoint="https://oauth2.googleapis.com/token",
     refresh_token_endpoint="https://oauth2.googleapis.com/token",
-    revoke_token_endpoint=None, # Set this to None to avoid the MissingRevokeToken error
-    client_name="google",
+    revoke_token_endpoint=None,
+    client_name="google"
 )
+
 # ============================================
 # 🎨 CUSTOM CSS
 # ============================================
@@ -75,7 +77,7 @@ if "current_convo" not in st.session_state:
 # ============================================
 with st.sidebar:
     st.title("🐰 MrBunny AI")
-    st.success(f"User: {st.session_state.user_info.get('name', 'Auth User')}")
+    st.success(f"User: {st.session_state.user_info.get('name', 'User')}")
     
     with st.form("new_chat_form", clear_on_submit=True):
         new_name = st.text_input("➕ New Chat")
@@ -90,17 +92,6 @@ with st.sidebar:
             st.session_state.current_convo = name
             st.rerun()
 
-if "user_info" not in st.session_state:
-    result = oauth2.authorize_button(
-        name="Sign in with Google",
-        icon="🔑",
-        scopes=["openid", "email", "profile"],
-        key="google_login",
-        redirect_uri=REDIRECT_URI,
-    )
-    if result and "token" in result:
-        st.session_state["user_info"] = oauth2.get_user_info(result["token"])
-        st.rerun()
 # ============================================
 # 🤖 AI & VOICE FUNCTIONS
 # ============================================
@@ -142,15 +133,4 @@ user_input = st.chat_input("Message MrBunny...")
 if user_input:
     with st.spinner("Calculating..."):
         reply = get_mrbunny_response(user_input, chat_history)
-        chat_history.append({"user": user_input, "bot": reply})
-        st.session_state.conversations[st.session_state.current_convo] = chat_history
-        st.rerun()
-
-if chat_history:
-    with st.sidebar:
-        st.markdown("---")
-        if st.button("🔊 Voice Sync"):
-            audio = speak(chat_history[-1]['bot'])
-            st.audio(audio, format="audio/mp3")
-
-st.sidebar.markdown("<p style='text-align:center; font-size: 10px;'>Made by Koushik Tummepalli</p>", unsafe_allow_html=True)
+        chat_history
